@@ -794,18 +794,29 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
           var bMonths=['বৈশাখ','জ্যৈষ্ঠ','আষাঢ়','শ্রাবণ','ভাদ্র','আশ্বিন','কার্তিক','অগ্রহায়ণ','পৌষ','মাঘ','ফাল্গুন','চৈত্র'];
           var seasons=['গ্রীষ্মকাল','গ্রীষ্মকাল','বর্ষাকাল','বর্ষাকাল','শরৎকাল','শরৎকাল','হেমন্তকাল','হেমন্তকাল','শীতকাল','শীতকাল','বসন্তকাল','বসন্তকাল'];
           var now=new Date();
-          try { now=new Date(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)+'T12:00:00+06:00'); } catch(ignore) {}
-          document.getElementById('bkDayName').textContent='আজ '+days[now.getDay()]+' |';
-          document.getElementById('bkEngDate').textContent=toB(now.getDate())+' '+months[now.getMonth()]+' '+toB(now.getFullYear())+' ইংরেজি';
-          try {
-            var bnDate=new Intl.DateTimeFormat('bn-BD-u-ca-beng',{timeZone:'Asia/Dhaka',day:'numeric',month:'long',year:'numeric'}).format(now);
-            var bnParts=new Intl.DateTimeFormat('en-US-u-ca-beng',{timeZone:'Asia/Dhaka',month:'numeric'}).formatToParts(now);
-            var bnMonth=Number(bnParts.filter(function(p){return p.type==='month';})[0].value)-1;
-            document.getElementById('bkBanglaDate').textContent=bnDate+', '+seasons[(bnMonth+12)%12];
-          } catch(ignore) {
-            var bm=now.getMonth()>=3?(now.getMonth()-3):(now.getMonth()+9);
-            var by=now.getMonth()>=3?(now.getFullYear()-593):(now.getFullYear()-594);
-            document.getElementById('bkBanglaDate').textContent=toB(now.getDate())+' '+bMonths[bm]+', '+toB(by)+', '+seasons[bm];
+          var dhakaParts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Dhaka',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(now);
+          var dhakaYear=Number(dhakaParts.filter(function(p){return p.type==='year';})[0].value);
+          var dhakaMonth=Number(dhakaParts.filter(function(p){return p.type==='month';})[0].value);
+          var dhakaDay=Number(dhakaParts.filter(function(p){return p.type==='day';})[0].value);
+          now=new Date(dhakaYear,dhakaMonth-1,dhakaDay,12);
+          document.getElementById('bkDayName').textContent='আজ '+new Intl.DateTimeFormat('bn-BD',{timeZone:'Asia/Dhaka',weekday:'long'}).format(now)+' |';
+          document.getElementById('bkEngDate').textContent=toB(dhakaDay)+' '+months[dhakaMonth-1]+' '+toB(dhakaYear)+' ইংরেজি';
+          var starts=[[4,14],[5,15],[6,15],[7,16],[8,16],[9,16],[10,17],[11,16],[12,16],[1,15],[2,14],[3,15]];
+          var todayStamp=dhakaYear*10000+dhakaMonth*100+dhakaDay;
+          var latestStart=null;
+          for(var sy=dhakaYear-1;sy<=dhakaYear;sy++){
+            starts.forEach(function(start,index){
+              var startYear=start[0]>=4?sy:sy+1;
+              var startStamp=startYear*10000+start[0]*100+start[1];
+              if(startStamp<=todayStamp&&(!latestStart||startStamp>latestStart.stamp)){
+                latestStart={stamp:startStamp,year:startYear,month:start[0],day:start[1],index:index};
+              }
+            });
+          }
+          if(latestStart){
+            var bengaliDay=Math.floor((Date.UTC(dhakaYear,dhakaMonth-1,dhakaDay)-Date.UTC(latestStart.year,latestStart.month-1,latestStart.day))/86400000)+1;
+            var bengaliYear=latestStart.year-(latestStart.month>=4?593:594);
+            document.getElementById('bkBanglaDate').textContent=toB(bengaliDay)+' '+bMonths[latestStart.index]+', '+toB(bengaliYear)+', '+seasons[latestStart.index];
           }
           try {
             document.getElementById('bkHijriDate').textContent=new Intl.DateTimeFormat('bn-BD-u-ca-islamic-umalqura',{timeZone:'Asia/Dhaka',day:'numeric',month:'long',year:'numeric'}).format(now)+' হিজরি';
