@@ -77,6 +77,12 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
     grid-template-columns: 160px 1fr 260px;
   }
 }
+@media(max-width: 1023px) {
+  .main-grid { display: flex; flex-direction: column; }
+  .main-grid > main { order: 1; min-width: 0; }
+  .main-grid > aside:first-child { order: 2; }
+  .main-grid > aside:last-child { order: 3; }
+}
 
 /* ===== CARD ===== */
 .card {
@@ -447,6 +453,13 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
 .top-main h2:hover { color: var(--primary); }
 .top-side h3 { font-size: 13px; font-weight: 700; line-height: 1.6; }
 .top-side h3:hover { color: var(--primary); }
+@media(max-width: 767px) {
+  #topNewsSection .grid-top { grid-template-columns: 1fr; }
+  #topNewsSection .grid-top > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #topNewsSection .grid-top .top-side { margin-bottom: 0 !important; }
+  #topNewsSection .grid-top .top-main h2 { font-size: 17px; }
+  #topNewsSection > div[style*="grid-template-columns"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
 
 /* Highlight layout */
 .highlight-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
@@ -781,13 +794,33 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
           var bMonths=['বৈশাখ','জ্যৈষ্ঠ','আষাঢ়','শ্রাবণ','ভাদ্র','আশ্বিন','কার্তিক','অগ্রহায়ণ','পৌষ','মাঘ','ফাল্গুন','চৈত্র'];
           var seasons=['গ্রীষ্মকাল','গ্রীষ্মকাল','বর্ষাকাল','বর্ষাকাল','শরৎকাল','শরৎকাল','হেমন্তকাল','হেমন্তকাল','শীতকাল','শীতকাল','বসন্তকাল','বসন্তকাল'];
           var now=new Date();
-          document.getElementById('bkDayName').textContent='আজ '+days[now.getDay()]+' |';
-          document.getElementById('bkEngDate').textContent=toB(now.getDate())+' '+months[now.getMonth()]+' '+toB(now.getFullYear())+' ইংরেজি';
-          var bm=now.getMonth()>=3?(now.getMonth()-3):(now.getMonth()+9);
-          var by=now.getMonth()>=3?(now.getFullYear()-593):(now.getFullYear()-594);
-          document.getElementById('bkBanglaDate').textContent=toB(now.getDate())+' '+bMonths[bm]+', '+toB(by)+', '+seasons[bm];
-          var hy=now.getFullYear()-579;
-          document.getElementById('bkHijriDate').textContent=toB(now.getDate())+' হিজরি '+toB(hy);
+          var dhakaParts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Dhaka',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(now);
+          var dhakaYear=Number(dhakaParts.filter(function(p){return p.type==='year';})[0].value);
+          var dhakaMonth=Number(dhakaParts.filter(function(p){return p.type==='month';})[0].value);
+          var dhakaDay=Number(dhakaParts.filter(function(p){return p.type==='day';})[0].value);
+          now=new Date(dhakaYear,dhakaMonth-1,dhakaDay,12);
+          document.getElementById('bkDayName').textContent='আজ '+new Intl.DateTimeFormat('bn-BD',{timeZone:'Asia/Dhaka',weekday:'long'}).format(now)+' |';
+          document.getElementById('bkEngDate').textContent=toB(dhakaDay)+' '+months[dhakaMonth-1]+' '+toB(dhakaYear)+' ইংরেজি';
+          var starts=[[4,14],[5,15],[6,15],[7,16],[8,16],[9,16],[10,17],[11,16],[12,16],[1,15],[2,14],[3,15]];
+          var todayStamp=dhakaYear*10000+dhakaMonth*100+dhakaDay;
+          var latestStart=null;
+          for(var sy=dhakaYear-1;sy<=dhakaYear;sy++){
+            starts.forEach(function(start,index){
+              var startYear=start[0]>=4?sy:sy+1;
+              var startStamp=startYear*10000+start[0]*100+start[1];
+              if(startStamp<=todayStamp&&(!latestStart||startStamp>latestStart.stamp)){
+                latestStart={stamp:startStamp,year:startYear,month:start[0],day:start[1],index:index};
+              }
+            });
+          }
+          if(latestStart){
+            var bengaliDay=Math.floor((Date.UTC(dhakaYear,dhakaMonth-1,dhakaDay)-Date.UTC(latestStart.year,latestStart.month-1,latestStart.day))/86400000)+1;
+            var bengaliYear=latestStart.year-(latestStart.month>=4?593:594);
+            document.getElementById('bkBanglaDate').textContent=toB(bengaliDay)+' '+bMonths[latestStart.index]+', '+toB(bengaliYear)+', '+seasons[latestStart.index];
+          }
+          try {
+            document.getElementById('bkHijriDate').textContent=new Intl.DateTimeFormat('bn-BD-u-ca-islamic-umalqura',{timeZone:'Asia/Dhaka',day:'numeric',month:'long',year:'numeric'}).format(now)+' হিজরি';
+          } catch(ignore) { document.getElementById('bkHijriDate').textContent=''; }
         })();
         //]]>
         </script>
@@ -1082,7 +1115,7 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
       <!-- HOME PAGE LABEL SECTIONS (each as separate widget) -->
       <b:section class='home-sections' id='home-sections' showaddelement='yes'>
 
-        <!-- শীর্ষ সংবাদ — ফিচার্ড পোস্ট (সব ক্যাটাগরি থেকে সর্বশেষ) -->
+        <!-- শীর্ষ সংবাদ — শীর্ষ সংবাদ লেবেলের পোস্ট -->
         <b:widget id='HTML5' locked='false' title='শীর্ষ সংবাদ' type='HTML' version='2' visible='true'>
           <b:includable id='main'>
             <div class='section-label'><span>শীর্ষ সংবাদ</span></div>
@@ -1091,12 +1124,15 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
             //<![CDATA[
             (function(){
               var s=document.createElement('script');
-              s.src='/feeds/posts/default?alt=json-in-script&amp;max-results=6&amp;callback=_bkTopNews';
+              s.src='/feeds/posts/default/-/শীর্ষ সংবাদ?alt=json-in-script&max-results=6&callback=_bkTopNews';
               document.body.appendChild(s);
             })();
             function _bkTopNews(d){
-              if(!d.feed||!d.feed.entry)return;
-              var entries=d.feed.entry;
+              var target=document.getElementById('topNewsSection');
+              if(!target)return;
+              if(!d.feed||!d.feed.entry||!d.feed.entry.length){target.innerHTML='<p style="padding:12px 0;color:var(--muted-fg);">শীর্ষ সংবাদ লেবেলে এখনো কোনো পোস্ট নেই।</p>';return;}
+              var entries=d.feed.entry.filter(function(entry){return entry.category&&entry.category.some(function(label){return label.term==='শীর্ষ সংবাদ';});});
+              if(!entries.length){target.innerHTML='<p style="padding:12px 0;color:var(--muted-fg);">শীর্ষ সংবাদ লেবেলে এখনো কোনো পোস্ট নেই।</p>';return;}
               var h='<div class="grid-top">';
               var e=entries[0];
               var cat=e.category?e.category[0].term:'';
@@ -1131,7 +1167,7 @@ h1,h2,h3,h4,h5,h6 { font-family: 'Noto Sans Bengali', sans-serif; }
                 }
                 h+='</div>';
               }
-              document.getElementById('topNewsSection').innerHTML=h;
+              target.innerHTML=h;
             }
             //]]>
             </script>
